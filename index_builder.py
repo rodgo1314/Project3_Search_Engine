@@ -11,6 +11,8 @@ import queue
 from collections import defaultdict
 from bs4 import BeautifulSoup
 import sys
+import json
+from nltk.tokenize import RegexpTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +44,45 @@ class IndexBuilder:
     and indexing them.
     '''
 
-    def __init__(self, frontier):
-        self.frontier = frontier
-        self.corpus = Corpus()
-        self.freq_dict = dict()
+    def __init__(self, json_data):
+        self.json_data = json_data
+        #list of the folder pages aka (index of pages)
+        self.folder_pages = []
+        #self.corpus = Corpus()
+        #self.freq_dict = dict()
+        self.corpus_length = 0
+
+
+    # reads bookkeeping.json and appends to list of folder_pages
+    #also keeps count of the corpus
+    def load_json_data(self):
+        with open(self.json_data) as x:
+            try:
+                data = json.load(x)
+            except ValueError:
+                data = {}
+        for d in data:
+            self.corpus_length = self.corpus_length + 1 #length should be 37497
+            self.folder_pages.append(d)
+
+    def tokenize_data(self,folder_index):
+        regular_expression = "\w+"
+        tokenizer = RegexpTokenizer(regular_expression)
+        word_position = 0
+        JSON_FILE_NAME = os.path.join(".", "WEBPAGES_RAW", folder_index)
+        data = open(JSON_FILE_NAME).read()
+
+        body = ""
+        for info in BeautifulSoup(data, "lxml").find_all("html"):
+            body = info.text + body + " "
+        new_body = tokenizer.tokenize(body.lower())
+
+        return new_body
+
+
+
+
+
 
 
     def start_crawling(self):
@@ -193,4 +230,11 @@ class IndexBuilder:
 
 
 
-
+if __name__ == '__main__':
+    index = IndexBuilder("bookkeeping.json")
+    index.load_json_data()
+    pages = {}
+    for folder_path in index.folder_pages:
+        pages[folder_path] = index.tokenize_data(folder_path)
+        break
+    print(pages)
