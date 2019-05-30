@@ -29,7 +29,9 @@ import json
 from nltk.tokenize import RegexpTokenizer
 from term import TermClass
 import math
-from document import Document
+
+import pickle
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +41,6 @@ class IndexBuilder:
         self.json_data = json_data
         self.folder_pages = []
         self.corpus_length = 0
-
-
-
 
         self.pages = {}
         self.content = {}
@@ -189,14 +188,24 @@ class IndexBuilder:
         for folder_path in self.folder_pages:
 ##            print(folder_path)
 ##            print(self.tokenize_data(folder_path))
+
             self.pages[folder_path] = self.tokenize_data(folder_path)
             count += 1
             if count % 1000 == 0:
                 print(str(count))
+
+##            if count == 1000:
+##                break
         
         #print(self.pages)
 
         print("building inverted index")
+
+        ## index is a dictionary, with term as the key and a doc dictionary as the value
+        ##      the doc dictionary has the docId as the key, and a list of properties as the value
+        ## {word : {docId : [freq, pos1, pos2, etc...]}}
+
+        
         for folder_path, term_dict in self.pages.items():
 
             for term in term_dict:
@@ -207,71 +216,44 @@ class IndexBuilder:
                     self.frequency_dict[term] += term_freq
                 else:
                     self.frequency_dict[term] = term_freq
-
-                d = Document(folder_path, term)
-                d.frequency = term_freq
-                d.positions.extend(term_positions)
                 
-                if term in self.inverted_index:
-                    self.inverted_index[term].append(d)
-                else:
-                    self.inverted_index[term] = []
-                    self.inverted_index[term].append(d)
+                if term not in self.inverted_index:
+                    self.inverted_index[term] = {}
+
+                if folder_path not in self.inverted_index[term]:
+                    self.inverted_index[term][folder_path] = []
+
+                
+                self.inverted_index[term][folder_path].extend(term_dict[term])
+
+        print("done initially building index...")
 
 
 
     def finalize_index(self):
         '''Part 2 of building the index: This performs the td-idf for each term, and
         adds this # to the inverted_index'''
-        for term, list_doc in index.inverted_index.items():
+        for term, doc_dict in index.inverted_index.items():
 
-            for doc in list_doc:
-                term_count = doc.frequency
-                word_count_in_folder_path = len(self.content[doc.doc_id])
+            for doc in doc_dict:
+                term_count = doc_dict[doc][0]
+                word_count_in_folder_path = len(self.content[doc])
 
                 tf = term_count / float(word_count_in_folder_path)
 
-                weightage = self.corpus_length / (len(list_doc))
+                weightage = self.corpus_length / (len(doc_dict))
                 
                 idf = math.log(weightage) + 1
 
                 tf_idf = tf * idf
 
-                doc.tf_idf = tf_idf
+                doc_dict[doc][0] = tf_idf
 
         return
         
-            
-##            for folder_path in v.folders:
-##                ## calculate tf(term, doc) = count of t in d / # of words in d
-##                term_count = v.frequencies[folder_path]
-##                word_count_in_folder_path = len(self.pages[folder_path])
-##
-##                tf = term_count / word_count_in_folder_path
-##
-##
-##                ## calculate df = occurrence of t in corpus
-##
-##                ## idf = log(N/(df + 1))
-##
-##                weightage = self.corpus_length / (self.frequency_dict[k] + 1)
-##                idf = math.log(weightage)
-##
-##                tf_idf = tf * idf
-##
-##                v.folders[folder_path] = tf_idf
-    
     def get_page(self, folder_path):
         '''Get content of a specific folder path in a form of a list'''
         return self.pages[folder_path]
-
-
-    def add_to_frequency_dict(self, term):
-        '''Count the # of the times the term appears in the whole corpus'''
-        if term in self.frequency_dict:
-            self.frequency_dict[term] += 1
-        else:
-            self.frequency_dict[term] = 1
 
     def is_term_valid(self, term):
         stopwords = ["i", "me", "my", "myself", "we", "our", "ours", "ourselves",
@@ -291,6 +273,9 @@ class IndexBuilder:
 
 
 if __name__ == '__main__':
+
+    start = time.time() ## recording execution time of program
+    
     index = IndexBuilder("bookkeeping.json")
     index.load_json_data()
 
@@ -310,125 +295,37 @@ if __name__ == '__main__':
         file.write("Appears (v.folders) in the following folder paths: ")
 
         for doc in v:
-            file.write(doc.doc_id + ": " + str(doc.tf_idf) + "; ")
+            file.write(doc + ": " + str(v[doc][0]) + "; ")
         file.write("\n")
         
         file.write("Positions (v.positions) of the term in each folder path: ")
 
         for doc in v:
-            file.write(doc.doc_id + ": " + str(doc.positions) + ", ")
+            file.write(doc + ": " + str(v[doc]) + ", ")
         file.write("\n")
         
-        file.write("Frequencies (v.frequencies) of the term in each folder path: ")
-
-        for doc in v:
-            file.write(doc.doc_id + ": " + str(doc.frequency) + ", ")
-        file.write("\n")
+##        file.write("Frequencies (v.frequencies) of the term in each folder path: ")
+##
+##        for doc in v:
+##            file.write(doc.doc_id + ": " + str(doc.frequency) + ", ")
+##        file.write("\n")
         
         file.write("# of times it appears in the corpus: " + str(index.frequency_dict[k]) + "\n")
         file.write("\n\n\n")
+
+
+    ## we store the inverted index in a pickle file --> to be unpickled and used in search_engine.py
+    pickling_on = open("master_index.pickle", "wb")
+    pickle.dump(index.inverted_index, pickling_on)
+    pickling_on.close()
+
+    print("i just pickled")
+
+    ## print(index.inverted_index["china"])
+
+    end = time.time()
+    print(end - start)
+
+    sys.exit(0)
     #
     # #print(index.frequency_dict["string"])
-
-
-
-
-
-
-
-
-
-# class Parser:
-#     '''
-#     This class is responsible for parsing through each URL, tokenizing terms,
-#     and indexing them.
-#     '''
-#
-#     def __init__(self, json_data):
-#         self.json_data = json_data
-#         #list of the folder pages aka (index of pages)
-#         self.folder_pages = []
-#         self.corpus_length = 0
-#
-#
-#     # reads bookkeeping.json and appends to list of folder_pages
-#     # also keeps count of the corpus
-#     def load_json_data(self):
-#         with open(self.json_data) as x:
-#             try:
-#                 data = json.load(x)
-#             except ValueError:
-#                 data = {}
-#         for d in data:
-#             self.corpus_length = self.corpus_length + 1 #length should be 37497
-#             self.folder_pages.append(d)
-#
-#     def tokenize_data(self,folder_index):
-#         regular_expression = "\w+"
-#         tokenizer = RegexpTokenizer(regular_expression)
-#         word_position = 0
-#         token_dict = {}
-#
-#
-#         JSON_FILE_NAME = os.path.join(".", "WEBPAGES_RAW", folder_index)
-#         data = open(JSON_FILE_NAME, encoding="utf8").read()
-#
-#         soup = BeautifulSoup(data, "lxml")
-#
-#         #looks for body of the file and gets unique term
-#         body = ""
-#         for script in soup(["script", "style"]):    ## removes any js or css
-#             script.decompose()
-#
-#         for info in soup.find_all("html"):
-#             ##print("NEW LINE: " + str(info))
-#             body = info.text + body + " "
-#         new_body = tokenizer.tokenize(body.lower())
-#
-#         #looks for title tags which will weigh more
-#         title = ""
-#         for info in soup.find_all("title"):
-#             title = info.text + title + " "
-#         new_title = tokenizer.tokenize(title.lower())
-#
-#         #looks for heading 1 to add weight
-#         heading1 = ""
-#         for info in soup.find_all("h1"):
-#             heading1 = info.text + heading1 + " "
-#         new_heading1 = tokenizer.tokenize(heading1.lower())
-#
-#         #looks for heading 2 to add weight
-#         heading2 = ""
-#         for info in soup.find_all("h2"):
-#             heading2 = info.text + heading2 + " "
-#         new_heading2 = tokenizer.tokenize(heading2.lower())
-#
-#         #finally looks for heading 3 add weight
-#         heading3 = ""
-#         for info in soup.find_all("h3"):
-#             heading3 = info.text + heading3 + " "
-#         new_heading3 = tokenizer.tokenize(heading3.lower())
-#
-#         # looks for meta description and adds weight only 1 weight
-#         meta_description = ""
-#         for info in soup.find('meta', attrs={"name": "description"}):
-#             meta_description = info.text + meta_description + " "
-#         new_meta_description = tokenizer.tokenize(meta_description.lower())
-#
-#
-#         for token in new_body:
-#             if token in token_dict.keys():
-#                 token_dict[token][0] += 1
-#                 token_dict[token].append(word_position)
-#                 wor
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#         return new_body
