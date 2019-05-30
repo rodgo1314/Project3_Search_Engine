@@ -1,6 +1,23 @@
 ## Project 3 - Search Engine - Index Building
 ## index_builder.py
 
+# def buildInvertedIndex(self):
+# 		pages = self.pages_to_words()
+# 		invertedIndex = {}
+# 		for file_name in pages.keys():
+# 			for word in pages[file_name].keys():
+# 				if word not in invertedIndex.keys():
+#
+# 					invertedIndex[word] = {}
+# 					invertedIndex[word][file_name] = []
+# 					invertedIndex[word][file_name] = pages[file_name][word]
+# 				else:
+# 					invertedIndex[word][file_name] = []
+# 					invertedIndex[word][file_name] = pages[file_name][word]
+# 		# print(invertedIndex)
+# 		return invertedIndex
+
+
 import logging
 import os
 import re
