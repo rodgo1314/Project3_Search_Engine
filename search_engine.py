@@ -22,16 +22,8 @@ class SearchEngine():
         tokenized_query = tokenizer.tokenize(self.query.lower())
 
         for token in tokenized_query:
-            if token not in query_dict.keys():
+            if token not in query_dict.keys() and token in self.index.keys():
                 query_dict[token] = self.index[token]
-
-
-
-
-
-
-
-
                 #query_dict[token] = 0
                 #query_dict[token] += score
 
@@ -73,66 +65,30 @@ class SearchEngine():
                 for result in ranked_results:
                     count += 1
                     top_pages.append(data[result[0]])
-                    if count == 5:
+                    if count == 20:
                         break
         return top_pages
 
 
-
-
-
-
-
-
-
-
 if "__main__" == __name__:
 
-    start = time.time()
-
-    print("unpickling")
+    print("Loading...")
     pickle_off = open("master_index.pickle", "rb")
     index = pickle.load(pickle_off)
 
-    print("pickled")
-
-##  writing all of the index to a file to see if it's the same as what was
-##  written in analytics.py (conclusion: they're the same)
+    print("Done!")
     
-##    file = open("analytics-pickle-version.txt", "w+", encoding='utf-8')
-##
-##    file.write("Size of index: " + str(len(index)) + "\n")
-##
-##    print("writing to file")
-##
-##    for k,v in sorted(index.items()):
-##        file.write("Term: " + k + "\n")
-##        file.write("Appears (v.folders) in the following folder paths: ")
-##
-##        for doc in v:
-##            file.write(doc + ": " + str(v[doc][0]) + "; ")
-##        file.write("\n")
-##        
-##        file.write("Positions (v.positions) of the term in each folder path: ")
-##
-##        for doc in v:
-##            file.write(doc + ": " + str(v[doc]) + ", ")
-##        file.write("\n")
-##        
-####        file.write("Frequencies (v.frequencies) of the term in each folder path: ")
-####
-####        for doc in v:
-####            file.write(doc.doc_id + ": " + str(doc.frequency) + ", ")
-####        file.write("\n")
-##        
-##        file.write("\n\n\n")
+    print()
 
-    end = time.time()
-    print(end - start)
+    print("*******************************************************************************************")
+    print("*******************************************************************************************")
+    print("************************     Welcome to the Search Engine!    *****************************")
+    print("************************                                      *****************************")
 
-    print("begin search")
+
+    print()
     while True:
-        query = input("input a query: ")
+        query = input("Search (type 'exit' to quit program): ")
 
         if query == "exit":
             sys.exit(0)
@@ -142,13 +98,26 @@ if "__main__" == __name__:
 
         scored = SE.score_query(result)
         ranked_pages = SE.rank_results(scored)
-        for page in SE.show_top_pages(ranked_pages):
-            print(page)
-        #pages_dict = SE.rank_results(result)
-        #print (pages_dict)
-            #SE.rank_results(result)
-        # except:
-        #     print(query + " not found in index")
-        #     pass
 
-##    print(index["china"]["0/464"])
+        count = 1
+        print()
+
+        if (len(ranked_pages) > 0):
+            print("Top results for '" + query + "': ")
+            print("*****************************************************************************")
+
+            for page in SE.show_top_pages(ranked_pages):
+                print("** " + str(count) + ". " + page)
+                count += 1
+
+            print("*****************************************************************************")
+
+            print()
+            print()
+
+        else:
+            
+            print("Oops! No results for '" + query + "' :( Please try again.")
+            print()
+            print()
+            
